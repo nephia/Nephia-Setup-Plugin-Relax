@@ -5,6 +5,7 @@ use warnings;
 use parent 'Nephia::Setup::Plugin';
 use Data::Section::Simple 'get_data_section';
 use File::Spec;
+use File::Basename 'dirname';
 
 our $VERSION = "0.01";
 
@@ -96,9 +97,10 @@ sub create_controllers {
 
 sub create_templates {
     my ($setup, $context) = @_;
-    for my $template ( qw/index include::layout include::menu/ ) {
-        my $file = File::Spec->catfile( split('::', $template) . '.tt' );
+    for my $template ( qw/index include::layout include::navbar/ ) {
+        my $file = File::Spec->catfile( split('::', $template) ). '.tt';
         my $data = __PACKAGE__->load_data($setup, $file);
+        $setup->makepath('view', dirname($file));
         $setup->spew('view', $file, $data);
     }
 }
@@ -218,6 +220,41 @@ sub hello {
 }
 
 1;
+
+@@ index.tt 
+[% WRAPPER 'include/layout.tt' %]
+<p>index</p>
+[% END %]
+
+@@ include/layout.tt
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>[% title || 'Top' %] | {{ $self->appname }}</title>
+  <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css">
+</head>
+<body>
+  <div class="navbar">
+    <div class="navbar-inner">
+      <div class="container">
+      [% INCLUDE 'include/navbar.tt' %]
+      </div>
+    </div>
+  </div>
+  <div class="container">
+  [% content %]
+  </div>
+  <script src="/static/js/jquery.min.js"></script>
+  <script src="/static/bootstrap/js/bootstrap.min.js"></script>
+</body>
+</html>
+
+@@ include/navbar.tt
+<a class="brand" href="/">{{ $self->appname }}</a>
+<ul class="nav">
+  <li><a href="/">top</a></li>
+</ul>
 
 __END__
 
