@@ -41,6 +41,7 @@ sub fix_setup {
         'Nephia::Plugin::JSON'                => '0',
         'Nephia::Plugin::ResponseHandler'     => '0',
         'Nephia::Plugin::View::Xslate'        => '0',
+        'Nephia::Plugin::ErrorPage'           => '0',
     );
 }
 
@@ -149,6 +150,9 @@ builder {
 @@ common.pl
 {
     appname => '{{ $self->appname }}',
+    ErrorPage => {
+        template => 'error.tt',
+    },
 };
 
 @@ config.pl 
@@ -185,6 +189,7 @@ use Nephia plugins => [
         syntax => 'TTerse',
         path   => [ qw/view/ ],
     },
+    'ErrorPage',
     'ResponseHandler',
     'Dispatch',
 ];
@@ -225,6 +230,24 @@ sub hello {
 [% WRAPPER 'include/layout.tt' %]
 <p>index</p>
 [% END %]
+
+@@ error.tt
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>[% title || 'Top' %] | {{ $self->appname }}</title>
+  <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css">
+</head>
+<body>
+  <div class="container">
+    <h1 class="label label-error">[% code %]</h1>
+    <p class="note">[% message %]</p> 
+  </div>
+  <script src="/static/js/jquery.min.js"></script>
+  <script src="/static/bootstrap/js/bootstrap.min.js"></script>
+</body>
+</html>
 
 @@ include/layout.tt
 <!DOCTYPE html>
