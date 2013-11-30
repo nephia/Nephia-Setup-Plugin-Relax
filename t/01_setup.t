@@ -16,6 +16,31 @@ my $setup = Nephia::Setup->new(
 
 $setup->do_task;
 
-ok 1;
+my @files = (
+    [qw/app.psgi/],
+    [qw/config common.pl/],
+    [qw/config local.pl/],
+    [qw/config dev.pl/],
+    [qw/config real.pl/],
+    [qw/lib My WebApp.pm/],
+    [qw/lib My WebApp C Root.pm/],
+    [qw/lib My WebApp C API Root.pm/],
+    [qw/view index.tt/],
+    [qw/view include layout.tt/],
+    [qw/view include navbar.tt/],
+    [qw/cpanfile/]
+);
+
+my @dirs = (
+    [qw/var/],
+);
+
+for my $entry ( @files ) {
+    ok -f File::Spec->catfile($approot, @$entry);
+}
+
+for my $entry ( @dirs ) {
+    ok -d File::Spec->catfile($approot, @$entry);
+}
 
 done_testing;
