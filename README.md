@@ -1,14 +1,34 @@
 # NAME
 
-Nephia::Setup::Plugin::Relax - It's new $module
+Nephia::Setup::Plugin::Relax - Xslate(TTerse) + Otogiri + alpha
 
 # SYNOPSIS
 
-    use Nephia::Setup::Plugin::Relax;
+    $ nephia-setup Your::App --plugins Relax
 
 # DESCRIPTION
 
-Nephia::Setup::Plugin::Relax is ...
+Relax style setup
+
+# BUNDLE SETUP-PLUGINS
+
+[Nephia::Setup::Plugin::Assets::Bootstrap](http://search.cpan.org/perldoc?Nephia::Setup::Plugin::Assets::Bootstrap)
+
+[Nephia::Setup::Plugin::Assets::JQuery](http://search.cpan.org/perldoc?Nephia::Setup::Plugin::Assets::JQuery)
+
+# ENABLED PLUGINS
+
+[Nephia::Plugin::JSON](http://search.cpan.org/perldoc?Nephia::Plugin::JSON)
+
+[Nephia::Plugin::View::Xslate](http://search.cpan.org/perldoc?Nephia::Plugin::View::Xslate)
+
+[Nephia::Plugin::ResponseHandler](http://search.cpan.org/perldoc?Nephia::Plugin::ResponseHandler)
+
+[Nephia::Plugin::Dispatch](http://search.cpan.org/perldoc?Nephia::Plugin::Dispatch)
+
+[Nephia::Plugin::FillInForm](http://search.cpan.org/perldoc?Nephia::Plugin::FillInForm)
+
+[Nephia::Plugin::ErrorPage](http://search.cpan.org/perldoc?Nephia::Plugin::ErrorPage)
 
 # LICENSE
 

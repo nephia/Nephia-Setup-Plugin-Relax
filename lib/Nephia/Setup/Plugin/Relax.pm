@@ -283,15 +283,35 @@ __END__
 
 =head1 NAME
 
-Nephia::Setup::Plugin::Relax - It's new $module
+Nephia::Setup::Plugin::Relax - Xslate(TTerse) + Otogiri + alpha
 
 =head1 SYNOPSIS
 
-    use Nephia::Setup::Plugin::Relax;
+    $ nephia-setup Your::App --plugins Relax
 
 =head1 DESCRIPTION
 
-Nephia::Setup::Plugin::Relax is ...
+Relax style setup
+
+=head1 BUNDLE SETUP-PLUGINS
+
+L<Nephia::Setup::Plugin::Assets::Bootstrap>
+
+L<Nephia::Setup::Plugin::Assets::JQuery>
+
+=head1 ENABLED PLUGINS
+
+L<Nephia::Plugin::JSON>
+
+L<Nephia::Plugin::View::Xslate>
+
+L<Nephia::Plugin::ResponseHandler>
+
+L<Nephia::Plugin::Dispatch>
+
+L<Nephia::Plugin::FillInForm>
+
+L<Nephia::Plugin::ErrorPage>
 
 =head1 LICENSE
 
