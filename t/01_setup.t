@@ -28,6 +28,7 @@ my @files = (
     [qw/view index.tt/],
     [qw/view include layout.tt/],
     [qw/view include navbar.tt/],
+    [qw/view error.tt/],
     [qw/cpanfile/]
 );
 
@@ -36,11 +37,13 @@ my @dirs = (
 );
 
 for my $entry ( @files ) {
-    ok -f File::Spec->catfile($approot, @$entry);
+    my $file = File::Spec->catfile($approot, @$entry);
+    ok -f $file, "exists $file";
 }
 
 for my $entry ( @dirs ) {
-    ok -d File::Spec->catfile($approot, @$entry);
+    my $dir = File::Spec->catfile($approot, @$entry);
+    ok -d $dir, "exists $dir";
 }
 
 done_testing;

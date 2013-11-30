@@ -35,9 +35,9 @@ sub fix_setup {
         'DBI'                                 => '0',
         'DBD::SQLite'                         => '0',
         'Otogiri'                             => '0',
-        'Nephia::Plugin::Dispatch'            => '0',
+        'Nephia::Plugin::Dispatch'            => '0.03',
         'Nephia::Plugin::FillInForm'          => '0',
-        'Nephia::Plugin::JSON'                => '0',
+        'Nephia::Plugin::JSON'                => '0.03',
         'Nephia::Plugin::ResponseHandler'     => '0',
         'Nephia::Plugin::View::Xslate'        => '0',
         'Nephia::Plugin::ErrorPage'           => '0',
@@ -97,7 +97,7 @@ sub create_controllers {
 
 sub create_templates {
     my ($setup, $context) = @_;
-    for my $template ( qw/index include::layout include::navbar/ ) {
+    for my $template ( qw/index include::layout include::navbar error/ ) {
         my $file = File::Spec->catfile( split('::', $template) ). '.tt';
         my $data = __PACKAGE__->load_data($setup, $file);
         $setup->makepath('view', dirname($file));
@@ -158,7 +158,7 @@ builder {
 use File::Basename 'dirname';
 use File::Spec;
 my $common = require(File::Spec->catfile(dirname(__FILE__), 'common.pl'));
-{
+my $conf = {
     %$common,
     'Cache' => { 
         servers   => ['127.0.0.1:11211'],
@@ -173,6 +173,7 @@ my $common = require(File::Spec->catfile(dirname(__FILE__), 'common.pl'));
     },
     
 };
+$conf;
 
 @@ MyClass.pm
 package {{ $self->appname }};
@@ -230,22 +231,12 @@ sub hello {
 [% END %]
 
 @@ error.tt
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>[% title || 'Top' %] | {{ $self->appname }}</title>
-  <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css">
-</head>
-<body>
-  <div class="container">
-    <h1 class="label label-error">[% code %]</h1>
-    <p class="note">[% message %]</p> 
+[% WRAPPER 'include/layout.tt' WITH title = code _ ' ' _ message %]
+  <div class="alert alert-block">
+     <h2 class="alert-heading">[% code %]</h1>
+     [% message %]
   </div>
-  <script src="/static/js/jquery.min.js"></script>
-  <script src="/static/bootstrap/js/bootstrap.min.js"></script>
-</body>
-</html>
+[% END %]
 
 @@ include/layout.tt
 <!DOCTYPE html>
