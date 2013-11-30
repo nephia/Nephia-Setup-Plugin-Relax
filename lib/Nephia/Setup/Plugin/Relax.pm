@@ -37,7 +37,6 @@ sub fix_setup {
         'Otogiri'                             => '0',
         'Nephia::Plugin::Dispatch'            => '0',
         'Nephia::Plugin::FillInForm'          => '0',
-        'Nephia::Plugin::FormValidator::Lite' => '0',
         'Nephia::Plugin::JSON'                => '0',
         'Nephia::Plugin::ResponseHandler'     => '0',
         'Nephia::Plugin::View::Xslate'        => '0',
@@ -181,7 +180,6 @@ use strict;
 use warnings;
 use Nephia plugins => [
     'FillInForm',
-    'FormValidator::Lite',
     'JSON' => {
         enable_api_status_header => 1,
     },
@@ -221,7 +219,7 @@ use warnings;
 sub hello {
     my $c = shift;
     my $id = $c->req->param('id');
-    $id ? { id => $id } : { status => 403 } ;
+    $id ? { id => $id } : { status => 403, message => 'id is required' } ;
 }
 
 1;
