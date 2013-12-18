@@ -245,6 +245,8 @@ sub hello {
   <meta charset="utf-8">
   <title>[% title || 'Top' %] | {{ $self->appname }}</title>
   <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css">
+  <script src="/static/js/jquery.min.js"></script>
+  <script src="/static/bootstrap/js/bootstrap.min.js"></script>
 </head>
 <body>
   <div class="navbar">
@@ -257,8 +259,6 @@ sub hello {
   <div class="container">
   [% content %]
   </div>
-  <script src="/static/js/jquery.min.js"></script>
-  <script src="/static/bootstrap/js/bootstrap.min.js"></script>
 </body>
 </html>
 
