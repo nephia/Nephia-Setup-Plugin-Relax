@@ -1,0 +1,4 @@
+[% WRAPPER 'include/layout.tt' %]
+<p>index</p>
+[% END %]
+
