@@ -3,9 +3,12 @@ use 5.008005;
 use strict;
 use warnings;
 use parent 'Nephia::Setup::Plugin';
-use Data::Section::Simple 'get_data_section';
 use File::Spec;
-use File::Basename 'dirname';
+use File::Basename qw/fileparse dirname/;
+use File::ShareDir 'dist_dir';
+use File::Copy;
+use File::Find;
+use Data::Dumper;
 
 our $VERSION = "0.01";
 
@@ -19,13 +22,8 @@ sub fix_setup {
     my $chain = $self->setup->action_chain;
     $chain->{chain} = [];
     $chain->append('CreateApproot'     => $self->can('create_approot'));
-    $chain->append('CreatePSGI'        => $self->can('create_psgi'));
-    $chain->append('CreateConfig'      => $self->can('create_config'));
-    $chain->append('CreateAppClass'    => $self->can('create_app_class'));
-    $chain->append('CreateControllers' => $self->can('create_controllers'));
-    $chain->append('CreateDBDir'       => $self->can('create_db_dir'));
-    $chain->append('CreateTemplates'   => $self->can('create_templates'));
     $chain->append('CreateCPANFile'    => $self->can('create_cpanfile'));
+    $chain->append('CreateEachFile'    => $self->can('create_eachfile'));
 
     push @{$self->setup->deps->{requires}}, (
         'Plack::Middleware::Static'           => '0',
@@ -35,6 +33,7 @@ sub fix_setup {
         'DBI'                                 => '0',
         'DBD::SQLite'                         => '0',
         'Otogiri'                             => '0',
+        'Nephia'                              => '0.87',
         'Nephia::Plugin::Dispatch'            => '0.03',
         'Nephia::Plugin::FillInForm'          => '0',
         'Nephia::Plugin::JSON'                => '0.03',
@@ -44,65 +43,10 @@ sub fix_setup {
     );
 }
 
-sub load_data {
-    my ($class, $setup, @path) = @_;
-    my $str = get_data_section(@path);
-    $setup->process_template($str);
-}
-
 sub create_approot {
     my ($setup, $context) = @_;
     $setup->stop(sprintf('%s is Already exists', $setup->approot)) if -d $setup->approot;
     $setup->makepath('.');
-}
-
-sub create_psgi {
-    my ($setup, $context) = @_;
-    my $data = __PACKAGE__->load_data($setup, 'app.psgi');
-    $setup->spew('app.psgi', $data);
-}
-
-sub create_config {
-    my ($setup, $context) = @_;
-
-    my $common = __PACKAGE__->load_data($setup, 'common.pl');
-    $setup->spew('config', 'common.pl', $common);
-
-    $setup->{dbfile} = File::Spec->catfile('var', 'db.sqlite3');
-    my $data = __PACKAGE__->load_data($setup, 'config.pl');
-    for my $env (qw/local dev real/) {
-        $setup->spew('config', "$env.pl", $data);
-    }
-}
-
-sub create_db_dir {
-    my ($setup, $context) = @_;
-    $setup->makepath('var');
-}
-
-sub create_app_class {
-    my ($setup, $context) = @_;
-    my $data = __PACKAGE__->load_data($setup, 'MyClass.pm');
-    $setup->spew($setup->classfile, $data);
-}
-
-sub create_controllers {
-    my ($setup, $context) = @_; 
-    for my $subclass ( qw/C::Root C::API::Root/ ) {
-        $setup->{tmpclass} = join('::', $setup->appname, $subclass);
-        my $data = __PACKAGE__->load_data($setup, $subclass);
-        $setup->spew('lib', split('::', $setup->{tmpclass}.'.pm'), $data);
-    }
-}
-
-sub create_templates {
-    my ($setup, $context) = @_;
-    for my $template ( qw/index include::layout include::navbar error/ ) {
-        my $file = File::Spec->catfile( split('::', $template) ). '.tt';
-        my $data = __PACKAGE__->load_data($setup, $file);
-        $setup->makepath('view', dirname($file));
-        $setup->spew('view', $file, $data);
-    }
 }
 
 sub create_cpanfile {
@@ -110,187 +54,39 @@ sub create_cpanfile {
     $setup->spew('cpanfile', $setup->cpanfile);
 }
 
-1;
-__DATA__
-
-@@ app.psgi
-use strict;
-use warnings;
-use File::Spec;
-use File::Basename 'dirname';
-use lib (
-    File::Spec->catdir(dirname(__FILE__), 'lib'), 
-);
-use {{ $self->appname }};
-
-use Plack::Builder;
-use Plack::Session::Store::Cache;
-use Cache::Memcached::Fast;
-
-my $run_env       = $ENV{PLACK_ENV} eq 'development' ? 'local' : $ENV{PLACK_ENV};
-my $basedir       = dirname(__FILE__);
-my $config_file   = File::Spec->catfile($basedir, 'config', $run_env.'.pl');
-my $config        = require($config_file);
-my $cache         = Cache::Memcached::Fast->new($config->{'Cache'});
-my $session_store = Plack::Session::Store::Cache->new(cache => $cache);
-my $app           = {{ $self->appname }}->run(%$config);
-
-builder {
-    enable_if { $ENV{PLACK_ENV} =~ /^($:local|dev)$/ } 'StackTrace', force => 1;
-    enable 'Static', (
-        root => $basedir,
-        path => qr{^/static/},
-    );
-    enable 'Session', (cache => $session_store);
-    enable 'CSRFBlock';
-    $app;
-};
-
-@@ common.pl
-{
-    appname => '{{ $self->appname }}',
-    ErrorPage => {
-        template => 'error.tt',
-    },
-};
-
-@@ config.pl 
-use File::Basename 'dirname';
-use File::Spec;
-my $common = require(File::Spec->catfile(dirname(__FILE__), 'common.pl'));
-my $conf = {
-    %$common,
-    'Cache' => { 
-        servers   => ['127.0.0.1:11211'],
-        namespace => '{{ $self->appname }}',
-    },
-    'DBI' => {
-        connect_info => [
-            'dbi:SQLite:dbname={{ $self->{dbfile} }}', 
-            '', 
-            '',
-        ],
-    },
-    
-};
-$conf;
-
-@@ MyClass.pm
-package {{ $self->appname }};
-use strict;
-use warnings;
-use Data::Dumper ();
-use URI;
-use Nephia::Incognito;
-use Nephia plugins => [
-    'FillInForm',
-    'JSON' => {
-        enable_api_status_header => 1,
-    },
-    'View::Xslate' => {
-        syntax => 'TTerse',
-        path   => [ qw/view/ ],
-        function => {
-            c    => \&c,
-            dump => sub {
-                local $Data::Dumper::Terse = 1;
-                Data::Dumper::Dumper(shift);
-            },
-            uri_for => sub {
-                my $path = shift;
-                my $env = c()->req->env;
-                my $uri = URI->new(sprintf(
-                    '%s://%s%s',
-                    $env->{'psgi.url_scheme'},
-                    $env->{'HTTP_HOST'},
-                    $path
-                ));
-                $uri->as_string;
-            },
-        },
-    },
-    'ErrorPage',
-    'ResponseHandler',
-    'Dispatch',
-];
-
-sub c () {Nephia::Incognito->unmask(__PACKAGE__)}
-
-app {
-    get '/'          => Nephia->call('C::Root#index');
-    get '/api/hello' => Nephia->call('C::API::Root#hello');
-};
-
-1;
-
-@@ C::Root
-package {{ $self->{tmpclass} }};
-use strict;
-use warnings;
-
-sub index {
-    my $c = shift;
-    { template => 'index.tt' };
+sub create_eachfile {
+    my ($setup, $context) = @_;
+    my $srcdir = dist_dir('Nephia-Setup-Plugin-Relax');
+    my $dstdir = $setup->approot;
+    my @classfile = $setup->classfile;
+    shift @classfile;
+    my $appname = File::Spec->catfile(@classfile);
+    $appname =~ s[\.pm][];
+    find(sub {
+        my $entry = $File::Find::name;
+        unless ($entry eq $srcdir) {
+            my $dst = $entry;
+            $dst =~ s[$srcdir][$dstdir];
+            $dst =~ s[__appname__][$appname];
+            if (-f $entry) {
+                my ($basename, $dir) = fileparse($dst);
+                $dir =~ s[$dstdir][];
+                if (! -z $dir) {
+                    $setup->diag('=== FILE %s ===', $dst);
+                    $setup->makepath($dir);
+                    $setup->diag('Create file %s', $dst);
+                    copy($entry, $dst);
+                }
+            }
+            elsif (-d $entry) {
+                $setup->diag('=== DIR %s ===', $dst);
+#                $setup->makepath($dir);
+            }
+        }
+    }, $srcdir);
 }
 
 1;
-
-@@ C::API::Root
-package {{ $self->{tmpclass} }};
-use strict;
-use warnings;
-
-sub hello {
-    my $c = shift;
-    my $id = $c->req->param('id');
-    $id ? { id => $id } : { status => 403, message => 'id is required' } ;
-}
-
-1;
-
-@@ index.tt 
-[% WRAPPER 'include/layout.tt' %]
-<p>index</p>
-[% END %]
-
-@@ error.tt
-[% WRAPPER 'include/layout.tt' WITH title = code _ ' ' _ message %]
-  <div class="alert alert-block">
-     <h2 class="alert-heading">[% code %]</h1>
-     [% message %]
-  </div>
-[% END %]
-
-@@ include/layout.tt
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>[% title || 'Top' %] | {{ $self->appname }}</title>
-  <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css">
-  <script src="/static/js/jquery.min.js"></script>
-  <script src="/static/bootstrap/js/bootstrap.min.js"></script>
-</head>
-<body>
-  <div class="navbar">
-    <div class="navbar-inner">
-      <div class="container">
-      [% INCLUDE 'include/navbar.tt' %]
-      </div>
-    </div>
-  </div>
-  <div class="container">
-  [% content %]
-  </div>
-</body>
-</html>
-
-@@ include/navbar.tt
-<a class="brand" href="/">{{ $self->appname }}</a>
-<ul class="nav">
-  <li><a href="/">top</a></li>
-</ul>
-
 __END__
 
 =encoding utf-8

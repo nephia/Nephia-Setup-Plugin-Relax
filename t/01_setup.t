@@ -5,6 +5,9 @@ use Nephia::Setup;
 use Nephia::Setup::Plugin::Relax;
 use File::Temp 'tempdir';
 use File::Spec;
+use Test::File::ShareDir::Dist {
+    'Nephia-Setup-Plugin-Relax' => File::Spec->catdir('share'),
+};
 
 my $approot = File::Spec->catdir(tempdir(CLEANUP => 1), 'approot');
 
@@ -25,6 +28,9 @@ my @files = (
     [qw/lib My WebApp.pm/],
     [qw/lib My WebApp C Root.pm/],
     [qw/lib My WebApp C API Root.pm/],
+    [qw/lib My WebApp M.pm/],
+    [qw/lib My WebApp M DB.pm/],
+    [qw/lib My WebApp M Cache.pm/],
     [qw/view index.tt/],
     [qw/view include layout.tt/],
     [qw/view include navbar.tt/],
