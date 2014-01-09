@@ -7,7 +7,6 @@ use File::Spec;
 use File::Basename qw/fileparse dirname/;
 use File::ShareDir 'dist_dir';
 use File::Find;
-use Data::Dumper;
 
 our $VERSION = "0.01";
 
@@ -72,9 +71,9 @@ sub create_eachfile {
                 $dir =~ s[$dstdir][];
                 my $file = $dst;
                 $file =~ s[$dstdir][];
+$file =~ s[^(\\|\/)][];
                 if (! -z $dir) {
                     $setup->makepath($dir);
-                    $setup->diag('Create file %s', $dst);
                     open my $fh, '<', $entry or die $!;
                     my $data = do {local $/; <$fh>};
                     close $fh;
