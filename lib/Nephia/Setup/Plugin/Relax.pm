@@ -6,7 +6,6 @@ use parent 'Nephia::Setup::Plugin';
 use File::Spec;
 use File::Basename qw/fileparse dirname/;
 use File::ShareDir 'dist_dir';
-use File::Copy;
 use File::Find;
 use Data::Dumper;
 
@@ -71,19 +70,25 @@ sub create_eachfile {
             if (-f $entry) {
                 my ($basename, $dir) = fileparse($dst);
                 $dir =~ s[$dstdir][];
+                my $file = $dst;
+                $file =~ s[$dstdir][];
                 if (! -z $dir) {
-                    $setup->diag('=== FILE %s ===', $dst);
                     $setup->makepath($dir);
                     $setup->diag('Create file %s', $dst);
-                    copy($entry, $dst);
+                    open my $fh, '<', $entry or die $!;
+                    my $data = do {local $/; <$fh>};
+                    close $fh;
+                    $setup->spew($file, $setup->process_template($data));
                 }
             }
             elsif (-d $entry) {
-                $setup->diag('=== DIR %s ===', $dst);
-#                $setup->makepath($dir);
+                my $dir = $dst;
+                $dir =~ s[$dstdir][];
+                $setup->makepath($dir);
             }
         }
     }, $srcdir);
+    $setup->makepath('var');
 }
 
 1;
