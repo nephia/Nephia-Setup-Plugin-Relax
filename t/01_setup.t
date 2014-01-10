@@ -24,11 +24,15 @@ my @files = (
     [qw/config real.pl/],
     [qw/lib My WebApp.pm/],
     [qw/lib My WebApp C Root.pm/],
-    [qw/lib My WebApp C API Root.pm/],
+    [qw/lib My WebApp C API Member.pm/],
+    [qw/lib My WebApp M.pm/],
+    [qw/lib My WebApp M DB.pm/],
+    [qw/lib My WebApp M DB Member.pm/],
     [qw/view index.tt/],
     [qw/view include layout.tt/],
     [qw/view include navbar.tt/],
     [qw/view error.tt/],
+    [qw/sql create.sql/],
     [qw/cpanfile/]
 );
 

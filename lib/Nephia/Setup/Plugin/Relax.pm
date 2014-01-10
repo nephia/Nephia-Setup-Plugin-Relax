@@ -22,9 +22,10 @@ sub fix_setup {
     $chain->append('CreatePSGI'        => $self->can('create_psgi'));
     $chain->append('CreateConfig'      => $self->can('create_config'));
     $chain->append('CreateAppClass'    => $self->can('create_app_class'));
-    $chain->append('CreateControllers' => $self->can('create_controllers'));
+    $chain->append('CreateSomeClasses' => $self->can('create_some_classes'));
     $chain->append('CreateDBDir'       => $self->can('create_db_dir'));
     $chain->append('CreateTemplates'   => $self->can('create_templates'));
+    $chain->append('CreateSQL'         => $self->can('create_sql'));
     $chain->append('CreateCPANFile'    => $self->can('create_cpanfile'));
 
     push @{$self->setup->deps->{requires}}, (
@@ -86,9 +87,9 @@ sub create_app_class {
     $setup->spew($setup->classfile, $data);
 }
 
-sub create_controllers {
+sub create_some_classes {
     my ($setup, $context) = @_; 
-    for my $subclass ( qw/C::Root C::API::Root/ ) {
+    for my $subclass ( qw/C::Root C::API::Member M M::DB M::DB::Member/ ) {
         $setup->{tmpclass} = join('::', $setup->appname, $subclass);
         my $data = __PACKAGE__->load_data($setup, $subclass);
         $setup->spew('lib', split('::', $setup->{tmpclass}.'.pm'), $data);
@@ -103,6 +104,12 @@ sub create_templates {
         $setup->makepath('view', dirname($file));
         $setup->spew('view', $file, $data);
     }
+}
+
+sub create_sql {
+    my ($setup, $context) = @_;
+    my $data = __PACKAGE__->load_data($setup, 'create.sql');
+    $setup->spew('sql', 'create.sql', $data);
 }
 
 sub create_cpanfile {
@@ -149,6 +156,10 @@ builder {
 @@ common.pl
 {
     appname => '{{ $self->appname }}',
+    'Plugin::FormValidator::Lite' => {
+        function_message => 'en',
+        constants => [qw/Email/],
+    },
     ErrorPage => {
         template => 'error.tt',
     },
@@ -184,6 +195,7 @@ use URI;
 use Nephia::Incognito;
 use Nephia plugins => [
     'FillInForm',
+    'FormValidator::Lite',
     'JSON' => {
         enable_api_status_header => 1,
     },
@@ -216,9 +228,12 @@ use Nephia plugins => [
 
 sub c () {Nephia::Incognito->unmask(__PACKAGE__)}
 
+sub config { __PACKAGE__->c->{config} }
+
 app {
-    get '/'          => Nephia->call('C::Root#index');
-    get '/api/hello' => Nephia->call('C::API::Root#hello');
+    get  '/' => Nephia->call('C::Root#index');
+    get  '/api/member/create' => Nephia->call('C::API::Member#create');
+    get  '/api/member/:id' => Nephia->call('C::API::Member#fetch');
 };
 
 1;
@@ -227,6 +242,7 @@ app {
 package {{ $self->{tmpclass} }};
 use strict;
 use warnings;
+use utf8;
 
 sub index {
     my $c = shift;
@@ -235,15 +251,147 @@ sub index {
 
 1;
 
-@@ C::API::Root
+@@ C::API::Member
 package {{ $self->{tmpclass} }};
 use strict;
 use warnings;
+use utf8;
+use {{ $self->appname }}::M::DB::Member;
 
-sub hello {
+sub create {
     my $c = shift;
-    my $id = $c->req->param('id');
-    $id ? { id => $id } : { status => 403, message => 'id is required' } ;
+    my $valid = $c->form(
+        name  => ['NOT_NULL', ['LENGTH', 1, 16]],
+        email => ['NOT_NULL', 'EMAIL_LOOSE'],
+    );
+
+    return {status => 400, message => $valid->get_error_messages} if $valid->has_error;
+
+    my $member = {{ $self->appname }}::M::DB::Member->create(
+        name  => $c->param('name'),
+        email => $c->param('email'),
+    );
+    return {member => $member};
+}
+
+sub fetch {
+    my $c = shift;
+    my $id = $c->path_param('id');
+
+    return {status => 403, message => 'id is required'} unless $id;
+
+    my $member = {{ $self->appname }}::M::DB::Member->fetch($id);
+    return $member ? {member => $member} : {status => 404, message => 'member not found'};
+}
+
+1;
+
+@@ M
+package {{ $self->{tmpclass} }};
+use strict;
+use warnings;
+use Nephia::Incognito;
+
+sub c {
+    my $class = shift;
+    Nephia::Incognito->unmask('{{ $self->appname }}');
+}
+
+1;
+
+@@ M::DB
+package {{ $self->{tmpclass} }};
+use strict;
+use warnings;
+use parent '{{ $self->appname }}::M';
+use Otogiri;
+use Data::Page::Navigation;
+
+our $table;
+my $db;
+
+sub db {
+    my $class = shift;
+    my $config = $class->c->config->{DBI};
+    $db ||= Otogiri->new(%$config);
+    unless($db->dbh->ping) {
+        $db = Otogiri->new(%$config);
+    }
+    $db;
+}
+
+sub create {
+    my ($class, %opts) = @_;
+    $class->db->insert($table, {%opts});
+}
+
+sub update {
+    my ($class, $set, $cond) = @_;
+    $class->db->update($table, $set, $cond);
+}
+
+sub search {
+    my ($class, $cond, $opts) = @_;
+    $class->db->select($table, $cond, $opts);
+}
+
+sub search_with_pager {
+    my ($class, $cond, $opts) = @_;
+    my $items_per_page = delete $opts->{rows}  || 10;
+    my $current_page   = delete $opts->{page}  || 1;
+    my $pages_per_nav  = delete $opts->{pages} || 10;
+    my ($total_query, @total_bind) = $class->db->maker->($table, ['COUNT(*) AS total'], $cond);
+    my ($total) = $class->db->search_by_sql($total_query, [@total_bind], $table);
+    my @rows = $class->search($table, $cond, $opts);
+    my $pager = Data::Page->new(
+        $total->{total},
+        $items_per_page,
+        $current_page
+    );
+    (\@rows, $pager);
+}
+
+sub single {
+    my ($class, %cond) = @_;
+    $class->db->single($table, %cond);
+}
+
+sub delete {
+    my ($class, %cond) = @_;
+    $class->db->delete($table, %cond);
+}
+
+sub txn {
+    my $class = shift;
+    $class->db->txn_scope;
+}
+
+sub last_insert_id {
+    my ($class, $args) = @_;
+    $class->db->last_insert_id($class);
+}
+
+1;
+
+@@ M::DB::Member
+package {{ $self->{tmpclass} }};
+use strict;
+use warnings;
+use parent '{{ $self->appname }}::M::DB';
+
+local ${{ $self->appname }}::M::DB::table = 'member';
+
+sub create {
+    my ($class, %opts) = @_;
+    my $now = time();
+    $opts{created_at} = $now;
+    $opts{updated_at} = $now;
+    $class->SUPER::create(%opts);
+}
+
+sub fetch {
+    my ($class, $id) = @_;
+    $class->single(id => $id);
 }
 
 1;
@@ -290,6 +438,15 @@ sub hello {
 <ul class="nav">
   <li><a href="/">top</a></li>
 </ul>
+
+@@ create.sql
+CREATE TABLE member (
+    id INT PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    email TEXT,
+    created_at INT,
+    updated_at INT
+);
 
 __END__
 
