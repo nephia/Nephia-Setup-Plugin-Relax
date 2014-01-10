@@ -441,7 +441,7 @@ sub fetch {
 
 @@ create.sql
 CREATE TABLE member (
-    id INT PRIMARY KEY AUTOINCREMENT,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
     email TEXT,
     created_at INT,
