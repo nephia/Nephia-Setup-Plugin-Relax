@@ -92,7 +92,7 @@ sub create_app_class {
 
 sub create_some_classes {
     my ($setup, $context) = @_; 
-    for my $subclass ( qw/C::Root C::API::Member M M::DB M::DB::Member/ ) {
+    for my $subclass ( qw/C::Root C::API::Member M M::DB M::DB::Member M::Cache/ ) {
         $setup->{tmpclass} = join('::', $setup->appname, $subclass);
         my $data = __PACKAGE__->load_data($setup, $subclass);
         $setup->spew('lib', split('::', $setup->{tmpclass}.'.pm'), $data);
@@ -265,6 +265,7 @@ use strict;
 use warnings;
 use utf8;
 use {{ $self->appname }}::M::DB::Member;
+use {{ $self->appname }}::M::Cache;
 
 sub create {
     my $c = shift;
@@ -288,7 +289,8 @@ sub fetch {
 
     return {status => 403, message => 'id is required'} unless $id;
 
-    my $member = {{ $self->appname }}::M::DB::Member->fetch($id);
+    my $member = {{ $self->appname }}::M::Cache->get("member:$id") || {{ $self->appname }}::M::DB::Member->fetch($id);
+    {{ $self->appname }}::M::Cache->set("member:$id", $member, 300) if $member;
     return $member ? {member => $member} : {status => 404, message => 'member not found'};
 }
 
@@ -404,6 +406,32 @@ sub create {
 sub fetch {
     my ($class, $id) = @_;
     $class->single(id => $id);
+}
+
+1;
+
+@@ M::Cache
+package {{ $self->{tmpclass} }};
+use strict;
+use warnings;
+use parent '{{ $self->appname }}::M';
+use Cache::Memcached::Fast;
+
+our $AUTOLOAD;
+
+my $cache;
+
+sub AUTOLOAD {
+    my $class = shift;
+    my ($method) = $AUTOLOAD =~ m/::([a-z_]+)$/;
+    $class->cache->$method(@_);
+}
+
+sub cache {
+    my $class = shift;
+    my $config = $class->c->{config}{Cache};
+    $cache ||= Cache::Memcached::Fast->new($config);
+    $cache;
 }
 
 1;

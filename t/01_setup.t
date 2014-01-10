@@ -28,6 +28,7 @@ my @files = (
     [qw/lib My WebApp M.pm/],
     [qw/lib My WebApp M DB.pm/],
     [qw/lib My WebApp M DB Member.pm/],
+    [qw/lib My WebApp M Cache.pm/],
     [qw/view index.tt/],
     [qw/view include layout.tt/],
     [qw/view include navbar.tt/],

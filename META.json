@@ -43,8 +43,8 @@
       "runtime" : {
          "requires" : {
             "Nephia" : "0.86",
-            "Nephia::Setup::Plugin::Assets::Bootstrap" : "0.02",
-            "Nephia::Setup::Plugin::Assets::JQuery" : "0.02",
+            "Nephia::Setup::Plugin::Assets::Bootstrap" : "0.04",
+            "Nephia::Setup::Plugin::Assets::JQuery" : "0.03",
             "perl" : "5.008005"
          }
       },
