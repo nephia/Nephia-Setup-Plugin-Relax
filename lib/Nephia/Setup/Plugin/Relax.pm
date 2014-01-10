@@ -26,6 +26,7 @@ sub fix_setup {
     $chain->append('CreateDBDir'       => $self->can('create_db_dir'));
     $chain->append('CreateTemplates'   => $self->can('create_templates'));
     $chain->append('CreateSQL'         => $self->can('create_sql'));
+    $chain->append('CreateSetup'       => $self->can('create_setup'));
     $chain->append('CreateCPANFile'    => $self->can('create_cpanfile'));
 
     push @{$self->setup->deps->{requires}}, (
@@ -35,6 +36,7 @@ sub fix_setup {
         'Cache::Memcached::Fast'              => '0',
         'DBI'                                 => '0',
         'DBD::SQLite'                         => '0',
+        'Data::Page::Navigation'              => '0',
         'Otogiri'                             => '0',
         'Nephia::Plugin::Dispatch'            => '0.03',
         'Nephia::Plugin::FillInForm'          => '0',
@@ -42,6 +44,7 @@ sub fix_setup {
         'Nephia::Plugin::ResponseHandler'     => '0',
         'Nephia::Plugin::View::Xslate'        => '0',
         'Nephia::Plugin::ErrorPage'           => '0',
+        'Nephia'                              => '0.87',
     );
 }
 
@@ -110,6 +113,13 @@ sub create_sql {
     my ($setup, $context) = @_;
     my $data = __PACKAGE__->load_data($setup, 'create.sql');
     $setup->spew('sql', 'create.sql', $data);
+}
+
+sub create_setup {
+    my ($setup, $context) = @_;
+    my $data = __PACKAGE__->load_data($setup, 'setup.sh');
+    $setup->spew('script', 'setup.sh', $data);
+    chmod 0755, File::Spec->catfile($setup->approot, qw/script setup.sh/);
 }
 
 sub create_cpanfile {
@@ -228,8 +238,6 @@ use Nephia plugins => [
 
 sub c () {Nephia::Incognito->unmask(__PACKAGE__)}
 
-sub config { __PACKAGE__->c->{config} }
-
 app {
     get  '/' => Nephia->call('C::Root#index');
     get  '/api/member/create' => Nephia->call('C::API::Member#create');
@@ -307,12 +315,16 @@ use parent '{{ $self->appname }}::M';
 use Otogiri;
 use Data::Page::Navigation;
 
-our $table;
 my $db;
+
+sub table {
+    my $class = shift;
+    die "do not call directly $class";
+}
 
 sub db {
     my $class = shift;
-    my $config = $class->c->config->{DBI};
+    my $config = $class->c->{config}{DBI};
     $db ||= Otogiri->new(%$config);
     unless($db->dbh->ping) {
         $db = Otogiri->new(%$config);
@@ -322,17 +334,17 @@ sub db {
 
 sub create {
     my ($class, %opts) = @_;
-    $class->db->insert($table, {%opts});
+    $class->db->insert($class->table, {%opts});
 }
 
 sub update {
     my ($class, $set, $cond) = @_;
-    $class->db->update($table, $set, $cond);
+    $class->db->update($class->table, $set, $cond);
 }
 
 sub search {
     my ($class, $cond, $opts) = @_;
-    $class->db->select($table, $cond, $opts);
+    $class->db->select($class->table, $cond, $opts);
 }
 
 sub search_with_pager {
@@ -340,9 +352,9 @@ sub search_with_pager {
     my $items_per_page = delete $opts->{rows}  || 10;
     my $current_page   = delete $opts->{page}  || 1;
     my $pages_per_nav  = delete $opts->{pages} || 10;
-    my ($total_query, @total_bind) = $class->db->maker->($table, ['COUNT(*) AS total'], $cond);
-    my ($total) = $class->db->search_by_sql($total_query, [@total_bind], $table);
-    my @rows = $class->search($table, $cond, $opts);
+    my ($total_query, @total_bind) = $class->db->maker->($class->table, ['COUNT(*) AS total'], $cond);
+    my ($total) = $class->db->search_by_sql($total_query, [@total_bind], $class->table);
+    my @rows = $class->search($class->table, $cond, $opts);
     my $pager = Data::Page->new(
         $total->{total},
         $items_per_page,
@@ -353,12 +365,12 @@ sub search_with_pager {
 
 sub single {
     my ($class, %cond) = @_;
-    $class->db->single($table, %cond);
+    $class->db->single($class->table, {%cond});
 }
 
 sub delete {
     my ($class, %cond) = @_;
-    $class->db->delete($table, %cond);
+    $class->db->delete($class->table, {%cond});
 }
 
 sub txn {
@@ -379,7 +391,7 @@ use strict;
 use warnings;
 use parent '{{ $self->appname }}::M::DB';
 
-local ${{ $self->appname }}::M::DB::table = 'member';
+sub table { 'member' }
 
 sub create {
     my ($class, %opts) = @_;
@@ -447,6 +459,12 @@ CREATE TABLE member (
     created_at INT,
     updated_at INT
 );
+
+@@ setup.sh
+#!/bin/sh
+carton install &&
+sqlite3 ./var/db.sqlite3 < ./sql/create.sql &&
+echo 'SETUP DONE.'
 
 __END__
 

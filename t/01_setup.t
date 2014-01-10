@@ -33,6 +33,7 @@ my @files = (
     [qw/view include navbar.tt/],
     [qw/view error.tt/],
     [qw/sql create.sql/],
+    [qw/script setup.sh/],
     [qw/cpanfile/]
 );
 
