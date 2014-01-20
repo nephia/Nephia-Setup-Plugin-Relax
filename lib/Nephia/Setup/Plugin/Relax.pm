@@ -44,6 +44,7 @@ sub fix_setup {
         'Nephia::Plugin::ResponseHandler'     => '0',
         'Nephia::Plugin::View::Xslate'        => '0',
         'Nephia::Plugin::ErrorPage'           => '0',
+        'Nephia::Plugin::FormValidator::Lite' => '0',
         'Nephia'                              => '0.87',
     );
 }
