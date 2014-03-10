@@ -33,7 +33,8 @@ my @files = (
     [qw/view include layout.tt/],
     [qw/view include navbar.tt/],
     [qw/view error.tt/],
-    [qw/sql create.sql/],
+    [qw/sql sqlite.sql/],
+    [qw/sql mysql.sql/],
     [qw/script setup.sh/],
     [qw/cpanfile/]
 );

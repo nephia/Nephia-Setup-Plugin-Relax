@@ -112,8 +112,10 @@ sub create_templates {
 
 sub create_sql {
     my ($setup, $context) = @_;
-    my $data = __PACKAGE__->load_data($setup, 'create.sql');
-    $setup->spew('sql', 'create.sql', $data);
+    for my $type ( qw/ mysql sqlite / ) {
+        my $data = __PACKAGE__->load_data($setup, $type.'.sql');
+        $setup->spew('sql', $type.'.sql', $data);
+    }
 }
 
 sub create_setup {
@@ -480,7 +482,7 @@ sub cache {
   <li><a href="/">top</a></li>
 </ul>
 
-@@ create.sql
+@@ sqlite.sql
 CREATE TABLE member (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
@@ -488,6 +490,16 @@ CREATE TABLE member (
     created_at INT,
     updated_at INT
 );
+
+@@ mysql.sql
+CREATE TABLE member (
+    id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(140) NOT NULL,
+    email VARCHAR(140) NOT NULL,
+    created_at INT UNSIGNED NOT NULL,
+    updated_at INT UNSIGNED NOT NULL,
+    index (email)
+) ENGINE=InnoDB, DEFAULT CHAR SET=utf8; 
 
 @@ setup.sh
 #!/bin/sh
