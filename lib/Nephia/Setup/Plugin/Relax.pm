@@ -7,7 +7,7 @@ use Data::Section::Simple 'get_data_section';
 use File::Spec;
 use File::Basename 'dirname';
 
-our $VERSION = "0.01";
+our $VERSION = "0.02";
 
 sub bundle {
     qw/Assets::Bootstrap Assets::JQuery/;
@@ -240,6 +240,9 @@ use Nephia plugins => [
 ];
 
 sub c () {Nephia::Incognito->unmask(__PACKAGE__)}
+
+### To avoid to create duplicate cookies.
+c->action_chain->delete('Nephia::Action::CookieImprinter');
 
 app {
     get  '/' => Nephia->call('C::Root#index');
